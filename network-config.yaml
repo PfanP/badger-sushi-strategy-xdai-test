@@ -1,0 +1,24 @@
+development:
+- cmd: ganache-cli
+  cmd_settings:
+    accounts: 10
+    default_balance: 10000000000000000
+    evm_version: istanbul
+    fork: xdai
+    gas_limit: 12000000
+    timeout: 120
+    mnemonic: clutch captain shoe salt awake harvest setup primary inmate ugly among become
+    port: 8545
+  host: http://127.0.0.1
+  id: xdai-fork
+  name: Ganache-CLI (xDai Fork)
+  timeout: 120
+
+live:
+- name: Polygon
+  networks:
+    - name: Mainnet
+      chainid: 100
+      id: xdai
+      host: https://dai.poa.network
+      explorer: https://api.etherscan.io/api
