@@ -23,10 +23,11 @@ def test_is_profitable(deployed):
   # Deposit
   assert want.balanceOf(deployer) > 0
 
-  depositAmount = int(want.balanceOf(deployer) * 0.8)
+  depositAmount = int(want.balanceOf(deployer))
   assert depositAmount > 0
 
   want.approve(vault.address, MaxUint256, {"from": deployer})
+  print("Paused", snap.sett.paused())
 
   snap.settDeposit(depositAmount, {"from": deployer})
   

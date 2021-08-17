@@ -8,26 +8,39 @@ import "../deps/@openzeppelin/contracts-upgradeable/math/SafeMathUpgradeable.sol
 import "../deps/@openzeppelin/contracts-upgradeable/math/MathUpgradeable.sol";
 import "../deps/@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import "../deps/@openzeppelin/contracts-upgradeable/token/ERC20/SafeERC20Upgradeable.sol";
+import "../deps/@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "../interfaces/badger/IController.sol";
-
+import "../interfaces/sushiswap/IMinichef.sol";
+import "../interfaces/uniswap/IUniswapRouterV2.sol";
 
 import {
     BaseStrategy
 } from "../deps/BaseStrategy.sol";
 
-contract MyStrategy is BaseStrategy {
+contract StrategySushiBadgerWbtc is BaseStrategy {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using AddressUpgradeable for address;
     using SafeMathUpgradeable for uint256;
+    using SafeERC20 for IERC20;
 
     // address public want // Inherited from BaseStrategy, the token the strategy wants, swaps into and tries to grow
     address public lpComponent; // Token we provide liquidity with
     address public reward; // Token we farm and swap to want / lpComponent
 
+    address public constant wbtc = 0x8e5bBbb09Ed1ebdE8674Cda39A0c169401db4252; // WBTC Token
+    address public constant weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2; // WETH Token
+    address public constant sushi = 0x2995D1317DcD4f0aB89f4AE60F3f020A4F17C7CE; // SUSHI token
+    address public constant stake = 0xb7D311E2Eb55F2f68a9440da38e7989210b9A05e; // stake token
+    address public constant badgerTree = 0xb7D311E2Eb55F2f68a9440da38e7989210b9A05e; // stake token
+    
+    address public constant chef = 0xdDCbf776dF3dE60163066A5ddDF2277cB445E0F3; // Master staking contract
+    uint256 public constant pid = 1; // LP token pool ID
+    address public constant SUSHISWAP_ROUTER = 0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506;
+
     // Used to signal to the Badger Tree that rewards where sent to it
     event TreeDistribution(address indexed token, uint256 amount, uint256 indexed blockNumber, uint256 timestamp);
-
+    event DepositBadgerStrategy(uint256 amount);
     function initialize(
         address _governance,
         address _strategist,
@@ -50,13 +63,15 @@ contract MyStrategy is BaseStrategy {
 
         /// @dev do one off approvals here
         // IERC20Upgradeable(want).safeApprove(gauge, type(uint256).max);
+
+        IERC20(want).safeApprove(chef, type(uint256).max);
     }
 
     /// ===== View Functions =====
 
     // @dev Specify the name of the strategy
     function getName() external override pure returns (string memory) {
-        return "StrategyName";
+        return "StrategySushiv2LP";
     }
 
     // @dev Specify the version of the Strategy, for upgrades
@@ -66,9 +81,14 @@ contract MyStrategy is BaseStrategy {
 
     /// @dev Balance of want currently held in strategy positions
     function balanceOfPool() public override view returns (uint256) {
-        return 0;
+        (uint256 amount, ) = IMiniChefV2(chef).userInfo(pid, address(this));
+        return amount;
     }
     
+    function sushiAvailable() internal view returns (uint256) {
+        return IERC20(sushi).balanceOf(address(this));
+    }
+
     /// @dev Returns true if this strategy requires tending
     function isTendable() public override view returns (bool) {
         return true;
@@ -105,14 +125,29 @@ contract MyStrategy is BaseStrategy {
     /// @notice When this function is called, the controller has already sent want to this
     /// @notice Just get the current balance and then invest accordingly
     function _deposit(uint256 _amount) internal override {
+        // compare the lp amount with _amount
+        // uint256 lpAmount = IERC20(want).balanceOf(address(this));
+        IMiniChefV2(chef).deposit(
+            pid,
+            _amount,
+            address(this)
+        );
+        emit DepositBadgerStrategy(_amount);
     }
 
     /// @dev utility function to withdraw everything for migration
     function _withdrawAll() internal override {
+        // Withdraw all want from Chef
+        IMiniChefV2(chef).withdrawAndHarvest(pid, balanceOfPool(), address(this));
+
     }
     /// @dev withdraw the specified amount of want, liquidate from lpComponent to want, paying off any necessary debt for the conversion
     function _withdrawSome(uint256 _amount) internal override returns (uint256) {
+        if (_amount > balanceOfPool()) {
+            _amount = balanceOfPool();
+        }
 
+        IMiniChefV2(chef).withdrawAndHarvest(pid, _amount, address(this));
         return _amount;
     }
 
@@ -121,43 +156,44 @@ contract MyStrategy is BaseStrategy {
         _onlyAuthorizedActors();
 
 
-        uint256 _before = IERC20Upgradeable(want).balanceOf(address(this));
+        uint256 _before = sushiAvailable();
 
         // Write your code here 
+        IMiniChefV2(chef).harvest(pid, address(this));
+        
+        // Collect Stake tokens
+        uint256 _stake = IERC20(stake).balanceOf(address(this));
+        // if (_stake > 0) {
+        //     _swapSushiswap(stake, sushi, _stake);
+        // }
 
-
-        uint256 earned = IERC20Upgradeable(want).balanceOf(address(this)).sub(_before);
+        uint256 sushiAmount = sushiAvailable();
+        uint256 earned = sushiAmount.sub(_before);
 
         /// @notice Keep this in so you get paid!
-        (uint256 governancePerformanceFee, uint256 strategistPerformanceFee) = _processPerformanceFees(earned);
+        // (uint256 governancePerformanceFee, uint256 strategistPerformanceFee) = _processPerformanceFees(earned);
 
         // TODO: If you are harvesting a reward token you're not compounding
         // You probably still want to capture fees for it 
         // // Process Sushi rewards if existing
-        // if (sushiAmount > 0) {
-        //     // Process fees on Sushi Rewards
-        //     // NOTE: Use this to receive fees on the reward token
-        //     _processRewardsFees(sushiAmount, SUSHI_TOKEN);
+        if (sushiAvailable() > 0) {
+            // Process fees on Sushi Rewards
+            // NOTE: Use this to receive fees on the reward token
+            _processRewardsFees(sushiAmount, sushi);
 
-        //     // Transfer balance of Sushi to the Badger Tree
-        //     // NOTE: Send reward to badgerTree
-        //     uint256 sushiBalance = IERC20Upgradeable(SUSHI_TOKEN).balanceOf(address(this));
-        //     IERC20Upgradeable(SUSHI_TOKEN).safeTransfer(badgerTree, sushiBalance);
-        //     
-        //     // NOTE: Signal the amount of reward sent to the badger tree
-        //     emit TreeDistribution(SUSHI_TOKEN, sushiBalance, block.number, block.timestamp);
-        // }
+            // Transfer balance of Sushi to the Badger Tree
+            // NOTE: Send reward to badgerTree
+            IERC20Upgradeable(sushi).safeTransfer(badgerTree, sushiAvailable());
+            
+            // NOTE: Signal the amount of reward sent to the badger tree
+            emit TreeDistribution(sushi, sushiAmount, block.number, block.timestamp);
+        }
 
         /// @dev Harvest event that every strategy MUST have, see BaseStrategy
         emit Harvest(earned, block.number);
 
         /// @dev Harvest must return the amount of want increased
         return earned;
-    }
-
-    // Alternative Harvest with Price received from harvester, used to avoid exessive front-running
-    function harvest(uint256 price) external whenNotPaused returns (uint256 harvested) {
-
     }
 
     /// @dev Rebalance, Compound or Pay off debt here
@@ -180,5 +216,34 @@ contract MyStrategy is BaseStrategy {
         governanceRewardsFee = _processFee(_token, _amount, performanceFeeGovernance, IController(controller).rewards());
 
         strategistRewardsFee = _processFee(_token, _amount, performanceFeeStrategist, strategist);
+    }
+
+    /// @notice swap on sushiswap
+    function _swapSushiswap(
+        address _from,
+        address _to,
+        uint256 _amount
+    ) internal {
+        require(_to != address(0));
+
+        address[] memory path;
+
+        path = new address[](3);
+        path[0] = _from;
+        path[1] = weth;
+        path[2] = _to;
+
+        // IERC20(_from).safeApprove(SUSHISWAP_ROUTER, _amount);
+        IUniswapRouterV2(SUSHISWAP_ROUTER).swapExactTokensForTokens(
+            _amount,
+            0,
+            path,
+            address(this),
+            now.add(999999999)
+        );
+    }
+
+    function onTokenTransfer(address _sender, uint _value, bytes calldata _data) override external {
+
     }
 }

@@ -67,5 +67,6 @@ def settKeeper(vault):
 def strategyKeeper(strategy):
   return accounts.at(strategy.keeper(), force=True)
 
-
-      
+@pytest.fixture
+def sushi(deployed):
+  return deployed.sushi

@@ -12,6 +12,7 @@ import "./@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
 import "../interfaces/uniswap/IUniswapRouterV2.sol";
 import "../interfaces/badger/IController.sol";
 import "../interfaces/badger/IStrategy.sol";
+import "../interfaces/erc20/IERC677Receiver.sol";
 
 import "./SettAccessControl.sol";
 
@@ -27,7 +28,8 @@ import "./SettAccessControl.sol";
     V1.2
     - Remove idle want handling from base withdraw() function. This should be handled as the strategy sees fit in _withdrawSome()
 */
-abstract contract BaseStrategy is PausableUpgradeable, SettAccessControl {
+
+abstract contract BaseStrategy is PausableUpgradeable, SettAccessControl, IERC677Receiver {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using AddressUpgradeable for address;
     using SafeMathUpgradeable for uint256;

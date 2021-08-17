@@ -5,10 +5,11 @@ from config import (
   LP_COMPONENT,
   REWARD_TOKEN,
   PROTECTED_TOKENS,
-  FEES
+  FEES,
+  WETH
 )
 from dotmap import DotMap
-
+from helpers.constants import MaxUint256
 
 def main():
   return deploy()
@@ -17,7 +18,7 @@ def deploy():
   """
     Deploys, vault, controller and strats and wires them up for you to test
   """
-  deployer = accounts[0]
+  deployer = accounts[10]
 
   strategist = deployer
   keeper = deployer
@@ -45,8 +46,7 @@ def deploy():
     "PREFIX"
   )
 
-  sett.unpause({"from": governance})
-  controller.setVault(WANT, sett)
+  controller.setVault(WANT, sett, {'from': strategist})
 
 
   ## TODO: Add guest list once we find compatible, tested, contract
@@ -57,7 +57,7 @@ def deploy():
   # sett.setGuestList(guestList, {"from": governance})
 
   ## Start up Strategy
-  strategy = MyStrategy.deploy({"from": deployer})
+  strategy = StrategySushiBadgerWbtc.deploy({"from": deployer})
   strategy.initialize(
     BADGER_DEV_MULTISIG,
     strategist,
@@ -68,27 +68,27 @@ def deploy():
     FEES
   )
 
+  sett.unpause({"from": governance})
+
   ## Tool that verifies bytecode (run independetly) <- Webapp for anyone to verify
 
   ## Set up tokens
   want = interface.IERC20(WANT)
+  weth = interface.IERC20(WETH)
   lpComponent = interface.IERC20(LP_COMPONENT)
   rewardToken = interface.IERC20(REWARD_TOKEN)
-
+  sushi = interface.IERC20("0x2995D1317DcD4f0aB89f4AE60F3f020A4F17C7CE")
   ## Wire up Controller to Strart
   ## In testing will pass, but on live it will fail
   controller.approveStrategy(WANT, strategy, {"from": governance})
-  controller.setStrategy(WANT, strategy, {"from": deployer})
+  controller.setStrategy(WANT, strategy, {"from": governance})
 
   ## Uniswap some tokens here
-  router = Contract.from_explorer("0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D")
-  router.swapExactETHForTokens(
-    0, ## Mint out
-    ["0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", WANT],
-    deployer,
-    9999999999999999,
-    {"from": deployer, "value": 5000000000000000000}
-  )
+  # router = Contract.from_explorer("0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D")
+  want.approve("0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506", MaxUint256, {"from": deployer})
+  weth.approve("0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506", MaxUint256, {"from": deployer})
+  
+  accounts[0].transfer(deployer, 9999999999999999)
 
   return DotMap(
     deployer=deployer,
@@ -99,5 +99,7 @@ def deploy():
     # guestList=guestList,
     want=want,
     lpComponent=lpComponent,
-    rewardToken=rewardToken
+    rewardToken=rewardToken,
+    weth=weth,
+    sushi=sushi
   )

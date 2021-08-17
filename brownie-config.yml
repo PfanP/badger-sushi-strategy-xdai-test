@@ -1,10 +1,38 @@
 # use Ganache's forked mainnet mode as the default network
 # NOTE: You don't *have* to do this, but it is often helpful for testing
 networks:
-  default: mainnet-fork
-
+  default: xdai-fork
+  xdai:
+    explorer: https://blockscout.com/xdai/mainnet/
+    host: https://dai.poa.network
+  xdai-fork:
+    id: xdai-fork
+    cmd: ganache-cli
+    host: http://127.0.0.1
+    cmd_settings:
+      accounts: 10
+      evm_version: istanbul
+      fork: xdai
+      gas_limit: 12000000
+      mnemonic: brownie
+      port: 8545
+      unlock:
+        - 0xc375411C6597F692Add6a7a3AD5b3C38626B0F26
 # automatically fetch contract sources from Etherscan
-autofetch_sources: True
+
+  mainnet-fork:
+    id: mainnet-fork
+    cmd: ganache-cli
+    host: http://127.0.0.1
+    cmd_settings:
+      accounts: 10
+      evm_version: istanbul
+      fork: mainnet
+      gas_limit: 12000000
+      mnemonic: brownie
+      port: 8545
+      unlock:
+        - 0x070f5A78963a658d3b8700BAF8e3C08984514eA2
 
 # path remapping to support imports from GitHub/NPM
 compiler:

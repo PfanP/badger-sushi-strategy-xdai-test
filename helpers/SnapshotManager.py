@@ -100,7 +100,6 @@ class SnapshotManager:
         before = self.snap(trackedUsers)
         self.sett.deposit(amount, overrides)
         after = self.snap(trackedUsers)
-
         if confirm:
             self.resolver.confirm_deposit(
                 before, after, {"user": user, "amount": amount}

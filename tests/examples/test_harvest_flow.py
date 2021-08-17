@@ -115,7 +115,7 @@ def test_migrate_single_user(deployer, vault, sett, controller, strategy, want, 
     chain.sleep(15)
     chain.mine()
 
-    sett.earn({"from": strategist})
+    sett.earn({"from": deployer})
 
     chain.snapshot()
 
@@ -150,7 +150,7 @@ def test_migrate_single_user(deployer, vault, sett, controller, strategy, want, 
         with brownie.reverts():
             controller.withdrawAll(strategy.want(), {"from": randomUser})
 
-        controller.withdrawAll(strategy.want(), {"from": deployer})
+        controller.withdrawAll(strategy.want(), {"from": strategist})
 
         after = {"settWant": want.balanceOf(sett), "stratWant": strategy.balanceOf()}
 
