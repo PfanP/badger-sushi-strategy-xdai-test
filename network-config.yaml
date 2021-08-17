@@ -1,18 +1,16 @@
 development:
-- cmd: ganache-cli
-  cmd_settings:
-    accounts: 10
-    default_balance: 10000000000000000
-    evm_version: istanbul
-    fork: xdai
-    gas_limit: 12000000
-    timeout: 120
-    mnemonic: clutch captain shoe salt awake harvest setup primary inmate ugly among become
-    port: 8545
-  host: http://127.0.0.1
+- name: Ganache-CLI (xDai-Mainnet Fork)
   id: xdai-fork
-  name: Ganache-CLI (xDai Fork)
+  cmd: ganache-cli
+  host: http://127.0.0.1
   timeout: 120
+  cmd_settings:
+    port: 8545
+    gas_limit: 20000000
+    accounts: 10
+    evm_version: istanbul
+    mnemonic: brownie
+    fork: xdai-main
 
 live:
 - name: Polygon
@@ -21,4 +19,4 @@ live:
       chainid: 100
       id: xdai
       host: https://dai.poa.network
-      explorer: https://api.etherscan.io/api
+      explorer: https://blockscout.com/xdai/mainnet/
