@@ -6,7 +6,9 @@ from config import (
   REWARD_TOKEN,
   PROTECTED_TOKENS,
   FEES,
-  WETH
+  WETH,
+  STAKE,
+  SUSHI
 )
 from dotmap import DotMap
 from helpers.constants import MaxUint256
@@ -19,13 +21,13 @@ def deploy():
     Deploys, vault, controller and strats and wires them up for you to test
   """
   deployer = accounts[10]
-
-  strategist = deployer
+  
   keeper = deployer
   guardian = deployer
 
   governance = accounts.at(BADGER_DEV_MULTISIG, force=True)
-
+  badgerTree = accounts.at("0x811d5401d416d42338C0B72fFA96A92EFf6e508C")
+  strategist = accounts.at("0x811d5401d416d42338C0B72fFA96A92EFf6e508C")
   controller = Controller.deploy({"from": deployer})
   controller.initialize(
     BADGER_DEV_MULTISIG,
@@ -77,18 +79,19 @@ def deploy():
   weth = interface.IERC20(WETH)
   lpComponent = interface.IERC20(LP_COMPONENT)
   rewardToken = interface.IERC20(REWARD_TOKEN)
-  sushi = interface.IERC20("0x2995D1317DcD4f0aB89f4AE60F3f020A4F17C7CE")
+  stakeToken = interface.IERC20(STAKE)
+  sushiToken = interface.IERC20(SUSHI)
   ## Wire up Controller to Strart
   ## In testing will pass, but on live it will fail
   controller.approveStrategy(WANT, strategy, {"from": governance})
   controller.setStrategy(WANT, strategy, {"from": governance})
 
   ## Uniswap some tokens here
-  # router = Contract.from_explorer("0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D")
   want.approve("0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506", MaxUint256, {"from": deployer})
   weth.approve("0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506", MaxUint256, {"from": deployer})
   
   accounts[0].transfer(deployer, 9999999999999999)
+  stakeToken.transfer(strategy, 5000000000000000000000, {"from": accounts[11]})
 
   return DotMap(
     deployer=deployer,
@@ -101,5 +104,6 @@ def deploy():
     lpComponent=lpComponent,
     rewardToken=rewardToken,
     weth=weth,
-    sushi=sushi
+    badgerTree=badgerTree,
+    sushiToken=sushiToken
   )

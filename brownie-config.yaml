@@ -18,6 +18,7 @@ networks:
       port: 8545
       unlock:
         - 0xc375411C6597F692Add6a7a3AD5b3C38626B0F26
+        - 0x4E7bf3694962fC482a16D60FD78f99db9C4C52B0
 # automatically fetch contract sources from Etherscan
 
   mainnet-fork:
@@ -40,3 +41,4 @@ compiler:
     version: 0.6.12
 
 reports:
+dev_deployment_artifacts: true

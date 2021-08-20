@@ -32,7 +32,8 @@ contract StrategySushiBadgerWbtc is BaseStrategy {
     address public constant weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2; // WETH Token
     address public constant sushi = 0x2995D1317DcD4f0aB89f4AE60F3f020A4F17C7CE; // SUSHI token
     address public constant stake = 0xb7D311E2Eb55F2f68a9440da38e7989210b9A05e; // stake token
-    address public constant badgerTree = 0xb7D311E2Eb55F2f68a9440da38e7989210b9A05e; // stake token
+    address public constant badgerTree = 0x811d5401d416d42338C0B72fFA96A92EFf6e508C; // badgerTree address
+    address public constant wxdai = 0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d; // WXDAI token
     
     address public constant chef = 0xdDCbf776dF3dE60163066A5ddDF2277cB445E0F3; // Master staking contract
     uint256 public constant pid = 1; // LP token pool ID
@@ -65,6 +66,7 @@ contract StrategySushiBadgerWbtc is BaseStrategy {
         // IERC20Upgradeable(want).safeApprove(gauge, type(uint256).max);
 
         IERC20(want).safeApprove(chef, type(uint256).max);
+        IERC20(stake).safeApprove(SUSHISWAP_ROUTER, type(uint256).max);
     }
 
     /// ===== View Functions =====
@@ -163,9 +165,9 @@ contract StrategySushiBadgerWbtc is BaseStrategy {
         
         // Collect Stake tokens
         uint256 _stake = IERC20(stake).balanceOf(address(this));
-        // if (_stake > 0) {
-        //     _swapSushiswap(stake, sushi, _stake);
-        // }
+        if (_stake > 0) {
+            _swapSushiswap(stake, sushi, _stake);
+        }
 
         uint256 sushiAmount = sushiAvailable();
         uint256 earned = sushiAmount.sub(_before);
@@ -184,7 +186,6 @@ contract StrategySushiBadgerWbtc is BaseStrategy {
             // Transfer balance of Sushi to the Badger Tree
             // NOTE: Send reward to badgerTree
             IERC20Upgradeable(sushi).safeTransfer(badgerTree, sushiAvailable());
-            
             // NOTE: Signal the amount of reward sent to the badger tree
             emit TreeDistribution(sushi, sushiAmount, block.number, block.timestamp);
         }
@@ -228,10 +229,10 @@ contract StrategySushiBadgerWbtc is BaseStrategy {
 
         address[] memory path;
 
-        path = new address[](3);
+        path = new address[](2);
         path[0] = _from;
-        path[1] = weth;
-        path[2] = _to;
+        path[1] = wxdai;
+        // path[2] = _to;
 
         // IERC20(_from).safeApprove(SUSHISWAP_ROUTER, _amount);
         IUniswapRouterV2(SUSHISWAP_ROUTER).swapExactTokensForTokens(

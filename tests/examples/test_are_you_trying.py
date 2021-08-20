@@ -2,13 +2,14 @@ from brownie import *
 from helpers.constants import MaxUint256
 
 
-def test_are_you_trying(deployer, sett, strategy, want, sushi):
+def test_are_you_trying(deployer, sett, strategy, want, sushiToken, badgerTree):
   """
     Verifies that you set up the Strategy properly
   """
   # Setup
   startingBalance = want.balanceOf(deployer) // 10
   depositAmount = startingBalance // 2
+  
   assert startingBalance >= depositAmount
   assert startingBalance >= 0
   # End Setup
@@ -38,12 +39,13 @@ def test_are_you_trying(deployer, sett, strategy, want, sushi):
   chain.mine(100) # Mine so we get some interest
 
   ## TEST 2: Is the Harvest profitable?
-  harvest = strategy.harvest.call({"from": deployer})
+  badgerTreeAmountBefore = sushiToken.balanceOf(badgerTree)
   harvestTx = strategy.harvest({"from": deployer})
   event = harvestTx.events["Harvest"][1]
+  badgerTreeAmountAfter = sushiToken.balanceOf(badgerTree)
 
-  
-  print(sushi.balanceOf(strategy.address))  
+  # check if badgerTree received sushi
+  assert badgerTreeAmountAfter - badgerTreeAmountBefore > 0
   # If it doesn't print, we don't want it
   assert event["harvested"] > 0
 

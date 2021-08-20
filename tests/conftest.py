@@ -68,5 +68,9 @@ def strategyKeeper(strategy):
   return accounts.at(strategy.keeper(), force=True)
 
 @pytest.fixture
-def sushi(deployed):
-  return deployed.sushi
+def sushiToken(deployed):
+  return deployed.sushiToken
+
+@pytest.fixture
+def badgerTree(deployed):
+  return deployed.badgerTree
